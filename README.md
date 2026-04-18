@@ -1,23 +1,39 @@
-<img src="https://user-images.githubusercontent.com/870796/190517543-96f85ea2-55d0-4f3f-a1d6-18c926f8c8f5.png" data-canonical-src="https://user-images.githubusercontent.com/870796/190517543-96f85ea2-55d0-4f3f-a1d6-18c926f8c8f5.png" width="640" />
+# Aerial Inference Studio 🛸
+### Real-time Drone Georeferencing & Object Detection
 
-# Detect and Map Objects of Interest from Drone Videos
+Transform standard DJI drone videos and flight logs into a professional-grade intelligence dashboard. This studio automatically extracts the exact GPS coordinates of objects detected by AI and plots them on a real-time interactive map.
 
-This project extracts the location of objects of interest from a drone video and plots them on a map. By combining the video with data from its flight log and a computer vision model trained on [Roboflow](https://roboflow.com), it demonstrates georeferencing a machine learning model's predictions to GPS coordinates and using them to visualize the location of detected solar panels on a map using [Mapbox](https://mapbox.com).
+---
 
-https://user-images.githubusercontent.com/870796/189461690-122f4e64-a66e-40f0-ac4b-68258a8abe7e.mov
+## 🌟 Advanced Studio Features
 
-## Try It in Your Browser
+Compared to the original demonstration, this **Inference Studio** includes several high-end analysis tools:
 
-The project is [deployed to Github Pages here](https://roboflow.github.io/dji-aerial-georeferencing/) and you can test it out with [this sample video and flight log](https://drive.google.com/drive/folders/1m0lmYyLEQJiaykf821rYtyRvlO5Q_SAf).
+*   **📊 Detection Dashboard**: A real-time sidebar listing every confirmed object with high-resolution thumbnail crops and precise GPS coordinates.
+*   **👁️ Side-by-Side Validation**: A floating "Picture-in-Picture" raw video feed with live AI bounding boxes synchronized to the map view.
+*   **🎞️ Playback Controls**: Full video controls including play/pause and an interactive scrubber to jump to any point in the flight.
+*   **📍 Follow Drone Mode**: Lock the map camera to the drone's position for a smooth "first-person" analysis experience.
+*   **🧩 Mosaic Stitching**: Create a persistent "trail" of ground imagery (Orthomosaic) as the drone flies across the map.
+*   **📂 Geo-Tagged Export**: Download a full JSON report of all detections, including timestamps, confidence levels, and coordinate data.
+*   **🧠 Intelligent Log Matching**: Automatically matches your video file to the correct segment of a multi-recording flight log based on duration.
 
-If you have your own Drone video you'd like to use, [follow the instructions in the blog post to pull your detailed flight log from Airdata](https://blog.roboflow.com/georeferencing-drone-videos/).
+## 🛠️ Getting Started
 
-## Resources
+### 1. Launch the Studio
+Run the automated startup script to initialize your environment:
+```bash
+./start.sh
+```
 
-* Accompanying Blog Post: [Georeferencing Objects in Drone Videos](https://blog.roboflow.com/georeferencing-drone-videos/)
-* Try the [aerial solar panels pre-trained computer vision model](https://universe.roboflow.com/brad-dwyer/aerial-solar-panels/model/5) in your browser on [Roboflow Universe](https://universe.roboflow.com)
-* Browse other [Aerial Imagery Datasets and Pre-Trained Models](https://universe.roboflow.com/browse/aerial)
-* [Train Your Own Computer Vision Model](https://docs.roboflow.com/quick-start) to use with this repo
+### 2. Analyze Your Mission
+1.  **Drop Files**: Drag and drop your DJI video file and its corresponding CSV flight log (exported from Airdata).
+2.  **Filter**: Use the **Confidence Slider** to hide low-confidence detections and focus on confirmed targets.
+3.  **Navigate**: Click any detection in the dashboard to fly the map directly to that object for closer inspection.
+4.  **Export**: Save your mission data as a JSON file for use in GIS or reporting software.
+
+---
+
+## Technical Resources
 
 ## Run It Locally
 

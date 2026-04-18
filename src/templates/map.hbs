@@ -1,1 +1,84 @@
-<div id="map"></div>
+<div class="flex h-screen w-screen overflow-hidden">
+    <!-- Map Pane -->
+    <div class="relative flex-1 bg-gray-200">
+        <div id="map" class="h-full w-full"></div>
+        
+        <!-- Floating Validation View -->
+        <div id="validation-window" class="absolute bottom-24 left-4 w-72 h-40 bg-black rounded-lg shadow-2xl border-2 border-purple-500 overflow-hidden group z-20">
+            <video id="validation-video" class="w-full h-full object-cover" muted></video>
+            <canvas id="validation-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
+            <div class="absolute top-2 left-2 bg-purple-600 text-white text-[10px] px-2 py-1 rounded-sm opacity-80 uppercase font-bold">Raw Feed + AI</div>
+        </div>
+
+        <!-- Video Playback Bar -->
+        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-[80%] max-w-2xl bg-white/90 backdrop-blur shadow-2xl rounded-2xl border border-gray-100 p-4 flex items-center space-x-6 z-20">
+            <button id="play-pause-btn" class="w-10 h-10 flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white rounded-full transition-all shadow-lg active:scale-95">
+                <i class="fas fa-play" id="play-icon"></i>
+            </button>
+            
+            <div class="flex-1">
+                <div class="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 px-1">
+                    <span id="current-time">00:00</span>
+                    <span id="total-duration">00:00</span>
+                </div>
+                <div class="relative h-2 bg-gray-200 rounded-full cursor-pointer group" id="scrubber-container">
+                    <div id="scrubber-progress" class="absolute h-full bg-purple-600 rounded-full w-0"></div>
+                    <div id="scrubber-handle" class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-purple-600 rounded-full shadow-md scale-0 group-hover:scale-100 transition-transform"></div>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2 text-[10px] font-bold text-gray-500">
+                <span class="bg-gray-100 px-2 py-1 rounded">4.0x</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detection Dashboard Sidebar -->
+    <div id="sidebar" class="w-80 b-white border-l border-gray-200 flex flex-col shadow-xl z-10 bg-white">
+        <div class="p-4 border-b border-gray-100 bg-gray-50">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Inference Studio</h2>
+            <div class="flex items-center justify-between">
+                <h1 class="text-xl font-bold text-gray-800">Detections</h1>
+                <button id="export-btn" class="text-[10px] bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded font-bold uppercase transition-colors">Export</button>
+            </div>
+            
+            <!-- Filters -->
+            <div class="mt-4 space-y-4">
+                <div>
+                    <div class="flex justify-between text-[10px] items-center mb-1">
+                        <span class="text-gray-500 font-bold uppercase tracking-tight">Min Confidence</span>
+                        <span id="confidence-value" class="text-purple-600 font-bold">50%</span>
+                    </div>
+                    <input type="range" id="confidence-slider" min="0" max="100" value="50" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+                </div>
+
+                <!-- Settings -->
+                <div class="pt-4 border-t border-gray-100 space-y-3">
+                    <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Map Settings</h3>
+                    
+                    <label class="flex items-center justify-between cursor-pointer group">
+                        <span class="text-xs text-gray-600 font-medium group-hover:text-purple-600 transition-colors">Follow Drone</span>
+                        <div class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="follow-drone-toggle" class="sr-only peer">
+                            <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center justify-between cursor-pointer group">
+                        <span class="text-xs text-gray-600 font-medium group-hover:text-purple-600 transition-colors">Mosaic Mode (Stitch)</span>
+                        <div class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="mosaic-mode-toggle" class="sr-only peer">
+                            <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div id="detection-list" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- Detections will be injected here -->
+            <div class="text-center py-10 text-gray-400 italic">
+                Scanning for objects...
+            </div>
+        </div>
+    </div>
+</div>
