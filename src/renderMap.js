@@ -75,7 +75,7 @@ var renderMap = async function(videoFile, flightLogFile) {
     const map = new mapboxgl.Map({
         container: 'map',
         zoom: 1,
-        style: 'mapbox://styles/mapbox/streets-v11'
+        style: 'mapbox://styles/mapbox/satellite-v9'
     });
     window.map = map;
     
@@ -129,8 +129,8 @@ var renderMap = async function(videoFile, flightLogFile) {
 
         // zoom the map to the flight path (with 50px of padding)
         map.fitBounds([
-            [top, left],
-            [bottom, right]
+            [bottom, left],
+            [top, right]
         ], {
             padding: 50
         });
@@ -146,31 +146,21 @@ var renderMap = async function(videoFile, flightLogFile) {
 
         // keep track of where we've placed markers so we can smooth them out when the same panel is found across multiple frames
         var foundPoints = [];
-        var confidenceThreshold = 50;
+        window.foundPoints = foundPoints;
+        window.confidenceThreshold = 50;
         var isFollowing = false;
-        var isMosaic = false;
+        var isPaused = true; 
 
-        // UI Listeners
+        // Bind Confidence Slider
         $('#confidence-slider').on('input', function() {
-            confidenceThreshold = parseInt($(this).val());
-            $('#confidence-value').text(confidenceThreshold + "%");
+            window.confidenceThreshold = parseInt($(this).val());
+            $('#confidence-value').text(window.confidenceThreshold + "%");
             updateDashboardUI();
             updateMarkerVisibility();
         });
 
         $('#follow-drone-toggle').on('change', function() {
             isFollowing = $(this).is(':checked');
-        });
-
-        $('#mosaic-mode-toggle').on('change', function() {
-            isMosaic = $(this).is(':checked');
-            if(isMosaic && !map.getSource('mosaic')) {
-                 initMosaicSource();
-            }
-        });
-
-        $('#export-btn').click(function() {
-            exportResults();
         });
 
         // setup validation video
@@ -194,6 +184,8 @@ var renderMap = async function(videoFile, flightLogFile) {
             mosaicCanvas.height = 4096;
             window.mosaicCanvas = mosaicCanvas;
             window.mosaicCtx = mosaicCanvas.getContext('2d');
+            window.mosaicCtx.fillStyle = "white";
+            window.mosaicCtx.fillRect(0, 0, 4096, 4096);
             
             map.addSource('mosaic', {
                 'type': 'canvas',
@@ -238,60 +230,7 @@ var renderMap = async function(videoFile, flightLogFile) {
             return cropCanvas.toDataURL();
         };
 
-        // helper to update marker visibility
-        var updateMarkerVisibility = function() {
-            _.each(foundPoints, function(p) {
-                if(p.marker) {
-                    var isVisible = (p.points.length >= CONFIG.MIN_DETECTIONS_TO_MAKE_VISIBLE) && (p.confidence * 100 >= confidenceThreshold);
-                    p.marker.getElement().style.display = isVisible ? 'block' : 'none';
-                }
-            });
-        };
 
-        // helper to update dashboard UI
-        var lastUIUpdate = 0;
-        var updateDashboardUI = function() {
-            // throttle UI updates to 500ms to be more responsive to slider
-            if(Date.now() - lastUIUpdate < 500) return;
-            lastUIUpdate = Date.now();
-
-            var $list = $('#detection-list');
-            var html = '';
-            
-            _.each(foundPoints, function(p) {
-                // filter by detections count AND confidence
-                if(p.points.length < CONFIG.MIN_DETECTIONS_TO_MAKE_VISIBLE) return;
-                if(p.confidence * 100 < confidenceThreshold) return;
-                
-                var coords = p.location.geometry.coordinates;
-                html += `
-                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-100 flex items-center space-x-3 hover:border-purple-300 transition-colors cursor-pointer detection-item" data-lng="${coords[0]}" data-lat="${coords[1]}">
-                        <img src="${p.thumbnail}" class="w-16 h-16 rounded bg-black object-cover border border-gray-200">
-                        <div class="flex-1 min-w-0">
-                            <div class="text-[10px] text-purple-600 font-bold uppercase tracking-tight">${p.class || 'Object'} Confirmed</div>
-                            <div class="text-xs font-mono text-gray-500 truncate">${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}</div>
-                            <div class="flex items-center justify-between mt-1">
-                                <div class="text-[10px] text-gray-400">${p.points.length} obs</div>
-                                <div class="text-[10px] font-bold text-purple-500">${Math.round(p.confidence * 100)}% conf</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            if(html) {
-                $list.html(html);
-                $('.detection-item').click(function() {
-                    map.flyTo({
-                        center: [$(this).data('lng'), $(this).data('lat')],
-                        zoom: 19,
-                        essential: true
-                    });
-                });
-            } else {
-                $list.html('<div class="text-center py-10 text-gray-400 italic">No objects meet criteria...</div>');
-            }
-        };
 
         // helper to export results
         var exportResults = function() {
@@ -331,10 +270,12 @@ var renderMap = async function(videoFile, flightLogFile) {
 
         $playBtn.click(function() {
             var video = videoSource.video;
-            if (video.paused) {
+            if (isPaused) {
+                isPaused = false;
                 video.play();
                 $playIcon.removeClass('fa-play').addClass('fa-pause');
             } else {
+                isPaused = true;
                 video.pause();
                 $playIcon.removeClass('fa-pause').addClass('fa-play');
             }
@@ -433,35 +374,18 @@ var renderMap = async function(videoFile, flightLogFile) {
                 topLeft
             ]);
 
-            // If mosaic mode is on, stamp the current frame
-            if(isMosaic && window.mosaicCtx) {
-                var p1 = gpsToMosaicPixels(topRight[0], topRight[1]);
-                var p2 = gpsToMosaicPixels(bottomRight[0], bottomRight[1]);
-                var p3 = gpsToMosaicPixels(bottomLeft[0], bottomLeft[1]);
-                var p4 = gpsToMosaicPixels(topLeft[0], topLeft[1]);
-
-                // We simplify to a bounding box for now as 2d canvas doesn't easily do 4-point perspective warp without a helper
-                var minX = Math.min(p1.x, p2.x, p3.x, p4.x);
-                var minY = Math.min(p1.y, p2.y, p3.y, p4.y);
-                var maxX = Math.max(p1.x, p2.x, p3.x, p4.x);
-                var maxY = Math.max(p1.y, p2.y, p3.y, p4.y);
-                
-                // Draw slowly to create trail
-                window.mosaicCtx.globalAlpha = 0.2;
-                window.mosaicCtx.drawImage(video, minX, minY, maxX - minX, maxY - minY);
-            }
-
             // sync validation video
             if(Math.abs(validationVideo.currentTime - currentTime) > 0.1) {
                 validationVideo.currentTime = currentTime;
             }
-            if(video.paused) validationVideo.pause();
+            if(isPaused) validationVideo.pause();
             else validationVideo.play();
 
             // if the model has loaded, we're not already waiting for a prediction to return,
             // and it's been at least 200ms since we last ran a frame through the vision model,
+            // and the mission is NOT paused,
             // run a video frame through our computer vision model to detect & plot solar panels
-            if(window.model && !detectionInFlight && Date.now() - lastDetection >= 200) {
+            if(window.model && !detectionInFlight && Date.now() - lastDetection >= 200 && !isPaused) {
                 // pause the video so it doesn't get out of sync
                 detectionInFlight = true;
                 video.pause();
@@ -560,16 +484,232 @@ var renderMap = async function(videoFile, flightLogFile) {
 
                     updateDashboardUI();
                 }).finally(function() {
-                    // then start the video playing again
+                    // then start the video playing again ONLY if the user hasn't paused
                     detectionInFlight = false;
                     lastDetection = Date.now();
-                    video.play();
+                    if(!isPaused) video.play();
                 });
             }
         };
 
         // start animating & detecting frames
         detectFrame();
+
+        // --- Utility Functions (Inside Scope) ---
+        function updateMarkerVisibility() {
+            foundPoints.forEach(function(fp) {
+                if(fp.marker) {
+                    var visible = fp.confidence * 100 >= window.confidenceThreshold;
+                    fp.marker.getElement().style.display = visible ? 'block' : 'none';
+                }
+            });
+        }
+
+        function updateDashboardUI() {
+            var $list = $('#detections-list');
+            var html = "";
+
+            _.sortBy(foundPoints, p => -p.confidence).forEach(function(p) {
+                if(p.points.length < CONFIG.MIN_DETECTIONS_TO_MAKE_VISIBLE) return;
+                if(p.confidence * 100 < window.confidenceThreshold) return;
+                
+                var coords = p.location.geometry.coordinates;
+                html += `
+                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-100 flex items-center space-x-3 hover:border-purple-300 transition-colors cursor-pointer detection-item" data-lng="${coords[0]}" data-lat="${coords[1]}">
+                        <img src="${p.thumbnail}" class="w-16 h-16 rounded bg-black object-cover border border-gray-200">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[10px] text-purple-600 font-bold uppercase tracking-tight">${p.class || 'Object'} Confirmed</div>
+                            <div class="text-xs font-mono text-gray-500 truncate">${coords[1].toFixed(6)}, ${coords[0].toFixed(6)}</div>
+                            <div class="flex items-center justify-between mt-1">
+                                <div class="text-[10px] text-gray-400">${p.points.length} obs</div>
+                                <div class="text-[10px] font-bold text-purple-500">${Math.round(p.confidence * 100)}% conf</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if(html) {
+                $list.html(html);
+                $('.detection-item').off('click').on('click', function() {
+                    map.flyTo({
+                        center: [$(this).data('lng'), $(this).data('lat')],
+                        zoom: 19,
+                        essential: true
+                    });
+                });
+            } else {
+                $list.html('<div class="text-center py-10 text-gray-400 italic">Scanning Area...</div>');
+            }
+        }
+
+        function captureThumbnail(video, bbox) {
+            var cropCanvas = document.createElement('canvas');
+            cropCanvas.width = 128;
+            cropCanvas.height = 128;
+            var ctx = cropCanvas.getContext('2d');
+            ctx.drawImage(video, bbox.x - bbox.width/2, bbox.y - bbox.height/2, bbox.width, bbox.height, 0, 0, 128, 128);
+            return cropCanvas.toDataURL();
+        }
+
+        // --- Batch Mosaic Trigger ---
+        $('#run-batch-mosaic-btn').click(async function() {
+            if(!map.getSource('mosaic')) initMosaicSource();
+            
+            isPaused = true;
+            videoSource.video.pause();
+            $('#play-icon').removeClass('fa-pause').addClass('fa-play');
+
+            const $overlay = $('#batch-overlay');
+            const $progress = $('#batch-progress');
+            const $status = $('#batch-status');
+            const $percent = $('#batch-percent');
+
+            $overlay.removeClass('hidden');
+            $status.text("Initializing...");
+
+            // Process every 1 second (10 frames in our log)
+            const step = 10; 
+            const total = videoObservations.length;
+            
+            for(let i=0; i<total; i += step) {
+                const obs = videoObservations[i];
+                const time = i / 10;
+                
+                // Update Progress
+                const p = Math.round((i / total) * 100);
+                $progress.css('width', p + '%');
+                $percent.text(p + '%');
+                $status.text(`Processing frame ${i} of ${total}`);
+
+                // Move video and wait for frame
+                videoSource.video.currentTime = time;
+                await new Promise(r => {
+                    const onSeeked = () => {
+                        videoSource.video.removeEventListener('seeked', onSeeked);
+                        r();
+                    };
+                    videoSource.video.addEventListener('seeked', onSeeked);
+                    setTimeout(r, 200); // timeout safety
+                });
+
+                // Calculate footprint
+                const altitude = parseFloat(obs["ascent(feet)"]) * 0.3048;
+                const diagonalDistance = altitude * fovAtan;
+                const distance = diagonalDistance/2;
+                const bearing = (parseFloat(obs["compass_heading(degrees)"]) - 90) % 360;
+                const centerPoint = turf.point([parseFloat(obs.longitude), parseFloat(obs.latitude)]);
+                const offset = Math.atan(videoSource.video.videoHeight / videoSource.video.videoWidth) * 180 / Math.PI;
+                
+                const corners = [
+                    (bearing+offset+180)%360-180, // TR
+                    (bearing-offset)%360-180,     // BR
+                    (bearing+offset)%360-180,     // BL
+                    (bearing-offset+180)%360-180  // TL
+                ].map(b => turf.rhumbDestination(centerPoint, distance, b, {units: 'meters'}).geometry.coordinates);
+
+                const pixels = corners.map(c => gpsToMosaicPixels(c[0], c[1]));
+
+                // Warp and Draw
+                window.mosaicCtx.globalAlpha = 1.0;
+                drawWarpedImage(window.mosaicCtx, videoSource.video, pixels[3], pixels[0], pixels[1], pixels[2]);
+                
+                // Debug values on UI
+                if(i % 100 === 0) {
+                    $status.text(`Debug: p0x=${Math.round(pixels[0].x)} p0y=${Math.round(pixels[0].y)} w=${videoSource.video.videoWidth} b=${Math.round(bearing)}`);
+                }
+                
+                // Allow UI to breathe
+                if(i % 50 === 0) await new Promise(r => setTimeout(r, 10));
+            }
+
+            $status.text("Finalizing Export...");
+            $progress.css('width', '100%');
+            $percent.text('100%');
+
+            setTimeout(() => {
+                downloadMosaic();
+                $overlay.addClass('hidden');
+            }, 1000);
+        });
+
+        // --- JSON Export ---
+        $('#export-json-btn').click(function() {
+            const data = JSON.stringify(foundPoints.map(p => ({
+                class: p.class,
+                confidence: p.confidence,
+                location: p.location.geometry.coordinates,
+                observations: p.points.length
+            })), null, 2);
+            const blob = new Blob([data], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'detections.json';
+            link.click();
+        });
+    });
+};
+
+const downloadMosaic = function() {
+    const canvas = window.mosaicCanvas;
+    if (!canvas) return;
+
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const ctx = exportCanvas.getContext('2d');
+    
+    // Fill with solid white before drawing so transparency doesn't render as black
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.drawImage(canvas, 0, 0);
+
+    const link = document.createElement('a');
+    link.download = `aerial-mosaic-${Date.now()}.png`;
+    link.href = exportCanvas.toDataURL('image/png');
+    link.click();
+};
+
+const drawWarpedImage = function(ctx, img, p0, p1, p2, p3) {
+    const w = img.videoWidth || img.width;
+    const h = img.videoHeight || img.height;
+    drawTriangle(ctx, img, 0, 0, w, 0, w, h, p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
+    drawTriangle(ctx, img, 0, 0, w, h, 0, h, p0.x, p0.y, p2.x, p2.y, p3.x, p3.y);
+};
+
+const drawTriangle = function(ctx, img, x0, y0, x1, y1, x2, y2, sx0, sy0, sx1, sy1, sx2, sy2) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(sx0, sy0);
+    ctx.lineTo(sx1, sy1);
+    ctx.lineTo(sx2, sy2);
+    ctx.closePath();
+    ctx.clip();
+    const denom = x0 * (y2 - y1) - x1 * y2 + x2 * y1 + (x1 - x2) * y0;
+    if (denom === 0) return;
+    const m11 = -(y0 * (sx2 - sx1) - y1 * sx2 + y2 * sx1 + (y1 - y2) * sx0) / denom;
+    const m12 = (y1 * sy2 - y0 * (sy2 - sy1) - y2 * sy1 - (y1 - y2) * sy0) / denom;
+    const m21 = (x0 * (sx2 - sx1) - x1 * sx2 + x2 * sx1 + (x1 - x2) * sx0) / denom;
+    const m22 = -(x1 * sy2 - x0 * (sy2 - sy1) - x2 * sy1 - (x1 - x2) * sy0) / denom;
+    const dx = (x0 * (y2 * sx1 - y1 * sx2) + sx0 * (x1 * y2 - x2 * y1)) / denom;
+    const dy = (x0 * (y2 * sy1 - y1 * sy2) + sy0 * (x1 * y2 - x2 * y1)) / denom;
+    ctx.transform(m11, m12, m21, m22, dx, dy);
+    ctx.drawImage(img, 0, 0);
+    ctx.restore();
+};
+
+const getVideoDuration = function(file) {
+    return new Promise(function(resolve) {
+        var video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = function() {
+            window.URL.revokeObjectURL(video.src);
+            resolve(video.duration);
+        };
+        video.onerror = function() { resolve(0); };
+        video.src = URL.createObjectURL(file);
     });
 };
 
