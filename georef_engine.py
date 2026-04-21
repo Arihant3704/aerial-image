@@ -7,7 +7,7 @@ import tempfile
 
 R = 6378137.0
 
-def process_mosaic(video_path, csv_path, output_path):
+def process_mosaic(video_path, csv_path, output_path, progress_callback=None):
     """
     Processes a drone video and its telemetry CSV to generate a georeferenced orthomosaic.
     """
@@ -141,6 +141,12 @@ def process_mosaic(video_path, csv_path, output_path):
         np.copyto(mosaic, warped, where=(mask > 0))
         
         processed_count += 1
+        
+        # Report progress
+        if progress_callback:
+            percent = int((i / total_points) * 100)
+            progress_callback(percent)
+
         # Progress logging (every 10% or so)
         if (processed_count % max(1, (total_points // (process_step * 10)))) == 0:
             print(f"Stitching progress: {int((i/total_points)*100)}% (Frame at {frame_time_sec}s)...")

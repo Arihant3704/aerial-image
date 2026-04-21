@@ -616,6 +616,21 @@ var renderMap = async function(videoFile, flightLogFile) {
             $progress.css('width', '5%');
             $percent.text('5%');
 
+            // Set up a polling interval to get progress from the backend
+            let progressInterval = setInterval(async () => {
+                try {
+                    const progRes = await fetch('http://localhost:5001/progress');
+                    const progData = await progRes.json();
+                    if (progData.status === 'processing' || progData.status === 'starting') {
+                        $status.text(`Georeferencing Frames (OpenCV)...`);
+                        $progress.css('width', `${progData.percent}%`);
+                        $percent.text(`${progData.percent}%`);
+                    }
+                } catch (e) {
+                    console.warn("Progress polling error:", e);
+                }
+            }, 1000);
+
             try {
                 // Prepare the files for the Python Bridge
                 const formData = new FormData();
@@ -627,22 +642,20 @@ var renderMap = async function(videoFile, flightLogFile) {
                     body: formData
                 });
 
+                clearInterval(progressInterval);
+
                 if (!response.ok) {
                     const errorJson = await response.json().catch(() => ({}));
                     throw new Error(errorJson.error || `Server error: ${response.status}`);
                 }
 
-                $status.text("Processing georeferenced frames (OpenCV)...");
-                $progress.css('width', '50%');
-                $percent.text('50%');
-
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                
                 $status.text("Finalizing Export...");
                 $progress.css('width', '100%');
                 $percent.text('100%');
 
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
                 // Trigger download
                 const a = document.createElement('a');
                 a.href = url;
@@ -657,6 +670,7 @@ var renderMap = async function(videoFile, flightLogFile) {
                 }, 1000);
 
             } catch (error) {
+                clearInterval(progressInterval);
                 console.error("Python Bridge Error:", error);
                 alert("Error generating mosaic: " + error.message);
                 $overlay.addClass('hidden');
