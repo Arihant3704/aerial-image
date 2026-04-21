@@ -97,17 +97,22 @@ Roboflow is an end-to-end computer vision platform that has helped over 100,000 
 
 Once you've trained a custom model, update your publishable API Key, model ID, and version in the configuration at the top of [`main.js`](src/main.js).
 
-## Contributing
+## ✅ Recent Contributions
 
-Pull requests are welcome to improve this repo. Ideas for improvements that could be made:
+We have recently upgraded this studio with high-end features originally listed as roadmap items:
+*   **🚀 Python Georeferencing Bridge**: A high-fidelity OpenCV-powered engine for gap-free orthomosaic generation.
+*   **📊 Real-time Progress Tracking**: Live heartbeat polling between the dashboard and the Python backend.
+*   **🧠 Intelligent Log Matching**: Automatic detection of the correct flight segment based on video duration.
+*   **🎞️ Mission Controls**: Full video playback integration (play/pause, seek, scrubbing).
+*   **🗺️ Follow Drone Mode**: Synchronized map-camera tracking for mission oversight.
+*   **📂 Data Export**: Professional-grade geo-tagged JSON export for all AI detections.
 
-* Taking into account changes in the ground elevation & their impact on the `distance` calculations
-* Intelligently choosing the correct part of the flight log based on the duration of `isVideo` compared to the duration of the loaded video
-* Exporting a JSON file of the detected objects
-* Adding a CLI for processing outside of a web browser
-* Rendering the flight video and predictions into a single image (patching video frames together)
-* Video controls (play/pause, scrubbing)
-* Option to show the video in a static position vs flying over the flight path
-* Add smoothing to the video positioning to account for the flight-log only having a 100ms resolution
-* Allowing dynamically swapping the model endpoint & version in the UI to easily try other models in the UI without having to change the code
-* Improve the solar panel model or swimming pool model to make better predictions
+## 🛠️ Future Roadmap (Contributing)
+
+Pull requests are welcome! Current ideas for deeper analysis tools:
+
+*   **🏔️ Terrain Compensation**: Integrate SRTM or digital elevation models to improve coordinate accuracy in hilly terrain.
+*   **🔥 Detection 'Burning'**: Render AI detection markers directly onto the finalized high-res orthomosaic export.
+*   **📈 Movement Smoothing**: Implement linear interpolation (LERP) between 10Hz data points for ultra-smooth drone movement.
+*   **🎨 Dynamic AI Models**: Allow users to swap Roboflow Model IDs directly in the UI for rapid testing.
+*   **📦 CLI Processing**: A standalone CLI for processing large batches of missions without the browser.
