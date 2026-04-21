@@ -100,12 +100,10 @@ Once you've trained a custom model, update your publishable API Key, model ID, a
 ## ✅ Recent Contributions
 
 We have recently upgraded this studio with high-end features originally listed as roadmap items:
-*   **🚀 Python Georeferencing Bridge**: A high-fidelity OpenCV-powered engine for gap-free orthomosaic generation.
-*   **📊 Real-time Progress Tracking**: Live heartbeat polling between the dashboard and the Python backend.
-*   **🧠 Intelligent Log Matching**: Automatic detection of the correct flight segment based on video duration.
-*   **🎞️ Mission Controls**: Full video playback integration (play/pause, seek, scrubbing).
-*   **🗺️ Follow Drone Mode**: Synchronized map-camera tracking for mission oversight.
 *   **📂 Data Export**: Professional-grade geo-tagged JSON export for all AI detections.
+*   **📄 Professional PDF Reports**: Automated generation of mission analysis documents with cover orthomosaics and target inventories.
+*   **🎨 Dynamic AI Switcher**: The ability to swap vision models (Solar, Pools, custom) directly from the UI settings.
+*   **🎯 Precision Alignment**: Fixed the 90-degree georeferencing rotation bug for pinpoint marker accuracy.
 
 ## 🛠️ Future Roadmap (Contributing)
 
@@ -114,5 +112,4 @@ Pull requests are welcome! Current ideas for deeper analysis tools:
 *   **🏔️ Terrain Compensation**: Integrate SRTM or digital elevation models to improve coordinate accuracy in hilly terrain.
 *   **🔥 Detection 'Burning'**: Render AI detection markers directly onto the finalized high-res orthomosaic export.
 *   **📈 Movement Smoothing**: Implement linear interpolation (LERP) between 10Hz data points for ultra-smooth drone movement.
-*   **🎨 Dynamic AI Models**: Allow users to swap Roboflow Model IDs directly in the UI for rapid testing.
 *   **📦 CLI Processing**: A standalone CLI for processing large batches of missions without the browser.

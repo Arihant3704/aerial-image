@@ -41,6 +41,7 @@
                 <h1 class="text-xl font-bold text-gray-800">Mission Studio</h1>
                 <div class="flex space-x-2">
                     <button id="export-json-btn" class="text-[10px] bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-1 rounded font-bold uppercase transition-colors">JSON</button>
+                    <button id="export-pdf-btn" class="text-[10px] bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded font-bold uppercase transition-colors">PDF REPORT</button>
                 </div>
             </div>
             
@@ -56,7 +57,21 @@
 
                 <!-- Settings -->
                 <div class="pt-4 border-t border-gray-100 space-y-3">
-                    <label class="flex items-center justify-between cursor-pointer group">
+                    <div class="space-y-2">
+                        <label class="text-[10px] text-gray-500 font-bold uppercase tracking-tight">Mission Model</label>
+                        <select id="model-preset-select" class="w-full text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-500">
+                            <option value="aerial-solar-panels/5">☀️ Solar Panels (Standard)</option>
+                            <option value="swimming-pool-b6pz4/2">🏊 Swimming Pools</option>
+                            <option value="custom">🛠️ Custom Model...</option>
+                        </select>
+                    </div>
+
+                    <div id="custom-model-fields" class="hidden space-y-2 pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <input type="text" id="custom-model-id" placeholder="Model ID (e.g. project/v)" class="w-full text-xs border border-gray-200 rounded px-2 py-1">
+                        <button id="apply-custom-model" class="w-full bg-gray-800 text-white text-[10px] font-bold py-1 rounded uppercase">Apply</button>
+                    </div>
+
+                    <label class="flex items-center justify-between cursor-pointer group pt-2">
                         <span class="text-xs text-gray-600 font-medium group-hover:text-purple-600 transition-colors">Follow Drone</span>
                         <div class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="follow-drone-toggle" class="sr-only peer">

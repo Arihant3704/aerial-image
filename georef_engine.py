@@ -7,6 +7,63 @@ import tempfile
 
 R = 6378137.0
 
+def extract_detection_crops(video_path, detections, output_dir):
+    """
+    Extracts high-resolution crops from the video based on detection timestamps and boxes.
+    """
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return []
+
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps <= 0: fps = 30.0
+
+    saved_crops = []
+    for idx, det in enumerate(detections):
+        frame_time_sec = det.get('frame_time_sec', 0)
+        box = det.get('box', {}) # {x, y, width, height} in pixels (center-based)
+        
+        # Use frame index instead of MSEC for better reliability
+        frame_idx = int(frame_time_sec * fps)
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        ret, frame = cap.read()
+        if not ret:
+            saved_crops.append(None)
+            continue
+
+        h, w = frame.shape[:2]
+        
+        bx = box.get('x', 0)
+        by = box.get('y', 0)
+        bw = box.get('width', 0)
+        bh = box.get('height', 0)
+
+        if bx < 1.0 and by < 1.0:
+            bx *= w; by *= h; bw *= w; bh *= h
+
+        x_min, y_min = int(bx - bw / 2), int(by - bh / 2)
+        x_max, y_max = int(bx + bw / 2), int(by + bh / 2)
+
+        pad = 50
+        x1, y1 = max(0, x_min - pad), max(0, y_min - pad)
+        x2, y2 = min(w, x_max + pad), min(h, y_max + pad)
+
+        crop = frame[y1:y2, x1:x2]
+        if crop.size == 0:
+            saved_crops.append(None)
+            continue
+
+        crop_filename = f"crop_{idx}.jpg"
+        crop_path = os.path.join(output_dir, crop_filename)
+        cv2.imwrite(crop_path, crop)
+        saved_crops.append(crop_path)
+
+    cap.release()
+    return saved_crops
+
 def process_mosaic(video_path, csv_path, output_path, progress_callback=None):
     """
     Processes a drone video and its telemetry CSV to generate a georeferenced orthomosaic.

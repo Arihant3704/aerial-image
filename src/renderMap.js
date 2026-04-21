@@ -465,12 +465,15 @@ var renderMap = async function(videoFile, flightLogFile) {
                         var percentOfDiagonal = distanceFromCenterInPixels / diagonalDistanceInPixels;
                         var distance = percentOfDiagonal * diagonalDistance; // in meters
 
-                        var angle = Math.atan(normalized[0]/(normalized[1]||0.000001)) * 180 / Math.PI;
-                        // if the detection is in the right half of the frame we need to rotate it 180 degrees
-                        if(normalized[1] >= 0) angle += 180;
+                        // Calculate the relative angle from the center (0° is Top/Forward)
+                        var angle = Math.atan2(normalized[1], -normalized[0]) * 180 / Math.PI;
 
                         // use that distance and bearing to get the GPS location of the panel
                         var point = turf.rhumbDestination(center, distance, (bearing + angle)%360, options);
+                        
+                        // attach metadata for the professional report
+                        point.frame_time_sec = currentTime;
+                        point.box = p.bbox;
 
                         // combine detections that are close together so we end up with a single marker per panel
                         // instead of clusters when a panel is detected across multiple frames of the video
@@ -479,11 +482,11 @@ var renderMap = async function(videoFile, flightLogFile) {
                             if(distanceFromPoint < CONFIG.MIN_SEPARATION_OF_DETECTIONS_IN_METERS/1000) {
                                 // if we have already found this panel, average the position of the new observation with
                                 // its existing position
-                                fp.points.push(point.geometry.coordinates);
+                                fp.points.push(point);
                                 var location = [0, 0];
-                                _.each(fp.points, function(point) {
-                                    location[0] += point[0];
-                                    location[1] += point[1];
+                                _.each(fp.points, function(pt) {
+                                    location[0] += pt.geometry.coordinates[0];
+                                    location[1] += pt.geometry.coordinates[1];
                                 });
                                 location[0] = location[0]/fp.points.length;
                                 location[1] = location[1]/fp.points.length;
@@ -518,9 +521,10 @@ var renderMap = async function(videoFile, flightLogFile) {
 
                         // if this is a new point, save it
                         if(!duplicate) {
+                            console.log("New: Sighting at", point.geometry.coordinates);
                             foundPoints.push({
                                 location: point,
-                                points: [point.geometry.coordinates],
+                                points: [point],
                                 marker: null,
                                 thumbnail: captureThumbnail(video, p.bbox),
                                 confidence: p.confidence,
@@ -598,6 +602,28 @@ var renderMap = async function(videoFile, flightLogFile) {
             ctx.drawImage(video, bbox.x - bbox.width/2, bbox.y - bbox.height/2, bbox.width, bbox.height, 0, 0, 128, 128);
             return cropCanvas.toDataURL();
         }
+
+        // --- Model Settings Handlers ---
+        $('#model-preset-select').change(function() {
+            const val = $(this).val();
+            if (val === 'custom') {
+                $('#custom-model-fields').removeClass('hidden');
+            } else {
+                $('#custom-model-fields').addClass('hidden');
+                const [modelId, version] = val.split('/');
+                window.switchModel(modelId, version);
+            }
+        });
+
+        $('#apply-custom-model').click(function() {
+            const val = $('#custom-model-id').val();
+            if (!val || !val.includes('/')) {
+                alert("Please enter a valid model path like: project/version");
+                return;
+            }
+            const [modelId, version] = val.split('/');
+            window.switchModel(modelId, version);
+        });
 
         // --- Batch Mosaic Trigger (Python Bridge) ---
         $('#run-batch-mosaic-btn').click(async function() {
@@ -692,6 +718,73 @@ var renderMap = async function(videoFile, flightLogFile) {
             link.href = url;
             link.download = 'detections.json';
             link.click();
+        });
+
+        // --- PDF Report Generator ---
+        $('#export-pdf-btn').click(async function() {
+            if (!foundPoints || foundPoints.length === 0) {
+                alert("Please run a mission and detect some objects before generating a report.");
+                return;
+            }
+
+            const $overlay = $('#batch-overlay');
+            const $status = $('#batch-status');
+            const $progress = $('#batch-progress');
+            const $percent = $('#batch-percent');
+
+            $overlay.removeClass('hidden');
+            $status.text("Building professional PDF report (Extracting high-res crops)...");
+            $progress.css('width', '50%');
+
+            try {
+                const formData = new FormData();
+                formData.append('video', videoFile);
+                formData.append('csv', flightLogFile);
+                
+                // Simplify detections for the report
+                const reportDetections = foundPoints.map(p => ({
+                    class: p.class,
+                    lat: p.location.geometry.coordinates[1],
+                    lng: p.location.geometry.coordinates[0],
+                    frame_time_sec: p.points[0].frame_time_sec, // Use first sighting for thumbnail
+                    box: p.points[0].box
+                }));
+
+                formData.append('detections', JSON.stringify(reportDetections));
+
+                const response = await fetch('http://localhost:5001/generate_report', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorJson = await response.json().catch(() => ({}));
+                    throw new Error(errorJson.error || `Server error: ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Mission_Report_${new Date().getTime()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                $status.text("Report Complete!");
+                $progress.css('width', '100%');
+
+                setTimeout(() => {
+                    $overlay.addClass('hidden');
+                }, 1000);
+
+            } catch (error) {
+                console.error("PDF Report Error:", error);
+                alert("Error generating report: " + error.message);
+                $overlay.addClass('hidden');
+            }
         });
     });
 };
