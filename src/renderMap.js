@@ -44,9 +44,10 @@ var renderMap = async function(videoFile, flightLogFile) {
     var segments = [];
     var currentSegment = [];
     observations.forEach(o => {
-        if (o.isVideo === "1") {
+        // More robust check for "1" or "1.0" or true
+        if (o.isVideo == "1" || o.isVideo == 1 || o.isVideo === true) {
             currentSegment.push(o);
-        } else if (currentSegment.length > 5) { // Minimum 0.5s segment
+        } else if (currentSegment.length > 5) {
             segments.push(currentSegment);
             currentSegment = [];
         }
@@ -57,19 +58,57 @@ var renderMap = async function(videoFile, flightLogFile) {
     var videoObservations = segments[0] || [];
     if (segments.length > 1) {
         videoObservations = _.min(segments, (s) => Math.abs(s.length - targetRowCount));
-        console.log(`Matched video (${videoDuration.toFixed(1)}s) to flight segment (${(videoObservations.length/10).toFixed(1)}s) out of ${segments.length} options.`);
     }
+    
+    // IMPORTANT FALLBACK: If NO video segments found, use raw telemetry as fallback
+    if (videoObservations.length === 0) {
+        console.warn("No 'isVideo=1' segments found. Falling back to all telemetry points with valid coordinates.");
+        videoObservations = observations.filter(o => !isNaN(parseFloat(o.latitude)) && !isNaN(parseFloat(o.longitude)));
+    }
+    
+    console.log(`Matched ${videoObservations.length} observations for mosaic processing.`);
 
-    // Calculate bounds of the chosen flight segment
-    var top = -Infinity, bottom = Infinity, left = Infinity, right = -Infinity;
+    // Calculate geographic bounds of the flown segment
+    var minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
     videoObservations.forEach(o => {
         o.latitude = parseFloat(o.latitude);
         o.longitude = parseFloat(o.longitude);
-        if(o.longitude > top) top = o.longitude;
-        if(o.longitude < bottom) bottom = o.longitude;
-        if(o.latitude < left) left = o.latitude;
-        if(o.latitude > right) right = o.latitude;
+        if(o.longitude > maxLng) maxLng = o.longitude;
+        if(o.longitude < minLng) minLng = o.longitude;
+        if(o.latitude > maxLat) maxLat = o.latitude;
+        if(o.latitude < minLat) minLat = o.latitude;
     });
+
+    // Calculate physical Cartesian span to preserve true aspect ratio in 2D space
+    var R = 6378137.0; 
+    var midLat = (minLat + maxLat) / 2.0;
+    var spanXMeters = (maxLng - minLng) * (Math.PI / 180) * R * Math.cos(midLat * (Math.PI / 180));
+    var spanYMeters = (maxLat - minLat) * (Math.PI / 180) * R;
+    
+    // Add margin (e.g. 200m)
+    var marginMeters = 200.0;
+    spanXMeters += 2 * marginMeters;
+    spanYMeters += 2 * marginMeters;
+
+    var cgLng = (minLng + maxLng) / 2.0;
+    var cgLat = (minLat + maxLat) / 2.0;
+
+    var MAX_DIM = 4096;
+    window.mosaic_w = MAX_DIM;
+    window.mosaic_h = MAX_DIM;
+
+    if (spanXMeters > spanYMeters) {
+        window.mosaic_h = Math.round(MAX_DIM * (spanYMeters / spanXMeters));
+    } else {
+        window.mosaic_w = Math.round(MAX_DIM * (spanXMeters / spanYMeters));
+    }
+    console.log(`Geospatial Span: X=${spanXMeters.toFixed(1)}m, Y=${spanYMeters.toFixed(1)}m`);
+    console.log(`Mosaic Canvas: ${window.mosaic_w}x${window.mosaic_h}`);
+    console.log(`Bounds: Lng=[${minLng}, ${maxLng}], Lat=[${minLat}, ${maxLat}]`);
+
+    if (isNaN(spanXMeters) || spanXMeters === 0) {
+        console.error("CRITICAL: Geospatial span is invalid. Check telemetry data.");
+    }
     
     // create a map view with the default streets styling zoomed out to the full world
     const map = new mapboxgl.Map({
@@ -114,10 +153,10 @@ var renderMap = async function(videoFile, flightLogFile) {
             'type': 'video',
             'urls': [URL.createObjectURL(videoFile)],
             'coordinates': [ // start with video in center of path; will get immediately overwritten but needs a default
-                [(top+bottom)/2+0.0007, (left+right)/2 - 0.0007],
-                [(top+bottom)/2+0.0007, (left+right)/2 + 0.0007],
-                [(top+bottom)/2-0.0007, (left+right)/2 + 0.0007],
-                [(top+bottom)/2-0.0007, (left+right)/2 - 0.0007]
+                [cgLng+0.0007, cgLat - 0.0007],
+                [cgLng+0.0007, cgLat + 0.0007],
+                [cgLng-0.0007, cgLat + 0.0007],
+                [cgLng-0.0007, cgLat - 0.0007]
             ]
         });
 
@@ -129,8 +168,8 @@ var renderMap = async function(videoFile, flightLogFile) {
 
         // zoom the map to the flight path (with 50px of padding)
         map.fitBounds([
-            [bottom, left],
-            [top, right]
+            [minLng, minLat],
+            [maxLng, maxLat]
         ], {
             padding: 50
         });
@@ -169,23 +208,31 @@ var renderMap = async function(videoFile, flightLogFile) {
         var validationCtx = validationCanvas.getContext('2d');
         validationVideo.src = URL.createObjectURL(videoFile);
 
-        // Global bounds for mosaic stitching
+        // Generate geographic rectangle that exactly covers the scaled mosaic
+        // Inverse the Cartesian mapping from canvas corners to Lat/Lon bounds to tell Mapbox where the box is!
+        // We know center is cgLng, cgLat. The canvas covers exactly spanXMeters and spanYMeters.
+        var halfSpanX = spanXMeters / 2.0;
+        var halfSpanY = spanYMeters / 2.0;
+        var dLng = (halfSpanX / (R * Math.cos(cgLat * (Math.PI / 180)))) * (180 / Math.PI);
+        var dLat = (halfSpanY / R) * (180 / Math.PI);
+
+        // Mapbox coordinates for image sources MUST be [NW, NE, SE, SW]
         var mosaicBounds = [
-            [top, left],
-            [bottom, left],
-            [bottom, right],
-            [top, right]
+            [cgLng - dLng, cgLat + dLat], // NW
+            [cgLng + dLng, cgLat + dLat], // NE
+            [cgLng + dLng, cgLat - dLat], // SE
+            [cgLng - dLng, cgLat - dLat]  // SW
         ];
 
         // helper to initialize mosaic canvas on first use
         var initMosaicSource = function() {
             var mosaicCanvas = document.createElement('canvas');
-            mosaicCanvas.width = 4096;
-            mosaicCanvas.height = 4096;
+            mosaicCanvas.width = window.mosaic_w;
+            mosaicCanvas.height = window.mosaic_h;
             window.mosaicCanvas = mosaicCanvas;
-            window.mosaicCtx = mosaicCanvas.getContext('2d');
+            window.mosaicCtx = mosaicCanvas.getContext('2d', { willReadFrequently: true });
             window.mosaicCtx.fillStyle = "white";
-            window.mosaicCtx.fillRect(0, 0, 4096, 4096);
+            window.mosaicCtx.fillRect(0, 0, window.mosaic_w, window.mosaic_h);
             
             map.addSource('mosaic', {
                 'type': 'canvas',
@@ -198,18 +245,20 @@ var renderMap = async function(videoFile, flightLogFile) {
                 'id': 'mosaic-layer',
                 'type': 'raster',
                 'source': 'mosaic',
-                'paint': { 'raster-opacity': 0.8 }
+                'paint': { 'raster-opacity': 0.9 }
             }, 'video'); // place behind live video
         };
 
-        // helper to map GPS to Mosaic Canvas pixels
+        // map precise GPS meters to proportional Canvas pixels
         var gpsToMosaicPixels = function(lng, lat) {
-            var xPercent = (lng - top) / (bottom - top);
-            var yPercent = (lat - left) / (right - left);
-            return {
-                x: xPercent * 4096,
-                y: yPercent * 4096
-            };
+            var dx_m = (lng - cgLng) * (Math.PI / 180) * R * Math.cos(cgLat * (Math.PI / 180));
+            var dy_m = (lat - cgLat) * (Math.PI / 180) * R;
+
+            // X goes left to right (West to East). Y goes top to bottom (North is top=0, South is bottom=H).
+            var px = (dx_m / spanXMeters) * window.mosaic_w + (window.mosaic_w / 2.0);
+            var py = (window.mosaic_h / 2.0) - (dy_m / spanYMeters) * window.mosaic_h;
+            
+            return { x: px, y: py };
         };
 
         // helper to capture thumbnail from video
@@ -354,17 +403,15 @@ var renderMap = async function(videoFile, flightLogFile) {
             var distance = diagonalDistance/2; // distance (in meters) from center point to any of the 4 corners
 
             // the direction the drone is pointed
-            var bearing = (parseFloat(observation["compass_heading(degrees)"]) - 90) % 360;
-            // the number of degrees the top corners of the video are offset from the drone heading
-            var offset = Math.atan(videoHeight / videoWidth) * 180 / Math.PI;
+            var bearing = parseFloat(observation["compass_heading(degrees)"]);
+            // proper 16:9 offset angle for diagonal mapping
+            var offset = Math.atan(videoWidth / videoHeight) * 180 / Math.PI;
 
-            // calculate the GPS coordinates of the video's four corners by starting at the drone's location and
-            // traveling `distance` meters in the direction of that corner
             var options = {units: 'meters'};
-            var topLeft = turf.rhumbDestination(center, distance, (bearing-offset+180)%360-180, options).geometry.coordinates;
-            var topRight = turf.rhumbDestination(center, distance, (bearing+offset+180)%360-180, options).geometry.coordinates;
-            var bottomRight = turf.rhumbDestination(center, distance, (bearing-offset)%360-180, options).geometry.coordinates;
-            var bottomLeft = turf.rhumbDestination(center, distance, (bearing+offset)%360-180, options).geometry.coordinates;
+            var topLeft = turf.rhumbDestination(center, distance, (bearing - offset + 360) % 360, options).geometry.coordinates;
+            var topRight = turf.rhumbDestination(center, distance, (bearing + offset + 360) % 360, options).geometry.coordinates;
+            var bottomRight = turf.rhumbDestination(center, distance, (bearing + 180 - offset + 360) % 360, options).geometry.coordinates;
+            var bottomLeft = turf.rhumbDestination(center, distance, (bearing + 180 + offset + 360) % 360, options).geometry.coordinates;
             
             // orient the video on the map
             videoSource.setCoordinates([
@@ -552,86 +599,70 @@ var renderMap = async function(videoFile, flightLogFile) {
             return cropCanvas.toDataURL();
         }
 
-        // --- Batch Mosaic Trigger ---
+        // --- Batch Mosaic Trigger (Python Bridge) ---
         $('#run-batch-mosaic-btn').click(async function() {
-            if(!map.getSource('mosaic')) initMosaicSource();
-            
-            isPaused = true;
-            videoSource.video.pause();
-            $('#play-icon').removeClass('fa-pause').addClass('fa-play');
+            if(!videoObservations || videoObservations.length === 0) {
+                alert("No terrestrial observations found. Please ensure CSV has 'isVideo' flags or valid GPS paths.");
+                return;
+            }
 
             const $overlay = $('#batch-overlay');
-            const $progress = $('#batch-progress');
             const $status = $('#batch-status');
+            const $progress = $('#batch-progress');
             const $percent = $('#batch-percent');
 
             $overlay.removeClass('hidden');
-            $status.text("Initializing...");
+            $status.text("Uploading data to High-Fidelity Python Engine...");
+            $progress.css('width', '5%');
+            $percent.text('5%');
 
-            // Process every 1 second (10 frames in our log)
-            const step = 10; 
-            const total = videoObservations.length;
-            
-            for(let i=0; i<total; i += step) {
-                const obs = videoObservations[i];
-                const time = i / 10;
-                
-                // Update Progress
-                const p = Math.round((i / total) * 100);
-                $progress.css('width', p + '%');
-                $percent.text(p + '%');
-                $status.text(`Processing frame ${i} of ${total}`);
+            try {
+                // Prepare the files for the Python Bridge
+                const formData = new FormData();
+                formData.append('video', videoFile);
+                formData.append('csv', flightLogFile);
 
-                // Move video and wait for frame
-                videoSource.video.currentTime = time;
-                await new Promise(r => {
-                    const onSeeked = () => {
-                        videoSource.video.removeEventListener('seeked', onSeeked);
-                        r();
-                    };
-                    videoSource.video.addEventListener('seeked', onSeeked);
-                    setTimeout(r, 200); // timeout safety
+                const response = await fetch('http://localhost:5001/stitch', {
+                    method: 'POST',
+                    body: formData
                 });
 
-                // Calculate footprint
-                const altitude = parseFloat(obs["ascent(feet)"]) * 0.3048;
-                const diagonalDistance = altitude * fovAtan;
-                const distance = diagonalDistance/2;
-                const bearing = (parseFloat(obs["compass_heading(degrees)"]) - 90) % 360;
-                const centerPoint = turf.point([parseFloat(obs.longitude), parseFloat(obs.latitude)]);
-                const offset = Math.atan(videoSource.video.videoHeight / videoSource.video.videoWidth) * 180 / Math.PI;
-                
-                const corners = [
-                    (bearing+offset+180)%360-180, // TR
-                    (bearing-offset)%360-180,     // BR
-                    (bearing+offset)%360-180,     // BL
-                    (bearing-offset+180)%360-180  // TL
-                ].map(b => turf.rhumbDestination(centerPoint, distance, b, {units: 'meters'}).geometry.coordinates);
-
-                const pixels = corners.map(c => gpsToMosaicPixels(c[0], c[1]));
-
-                // Warp and Draw
-                window.mosaicCtx.globalAlpha = 1.0;
-                drawWarpedImage(window.mosaicCtx, videoSource.video, pixels[3], pixels[0], pixels[1], pixels[2]);
-                
-                // Debug values on UI
-                if(i % 100 === 0) {
-                    $status.text(`Debug: p0x=${Math.round(pixels[0].x)} p0y=${Math.round(pixels[0].y)} w=${videoSource.video.videoWidth} b=${Math.round(bearing)}`);
+                if (!response.ok) {
+                    const errorJson = await response.json().catch(() => ({}));
+                    throw new Error(errorJson.error || `Server error: ${response.status}`);
                 }
+
+                $status.text("Processing georeferenced frames (OpenCV)...");
+                $progress.css('width', '50%');
+                $percent.text('50%');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
                 
-                // Allow UI to breathe
-                if(i % 50 === 0) await new Promise(r => setTimeout(r, 10));
-            }
+                $status.text("Finalizing Export...");
+                $progress.css('width', '100%');
+                $percent.text('100%');
 
-            $status.text("Finalizing Export...");
-            $progress.css('width', '100%');
-            $percent.text('100%');
+                // Trigger download
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `orthomosaic_${new Date().getTime()}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
 
-            setTimeout(() => {
-                downloadMosaic();
+                setTimeout(() => {
+                    $overlay.addClass('hidden');
+                }, 1000);
+
+            } catch (error) {
+                console.error("Python Bridge Error:", error);
+                alert("Error generating mosaic: " + error.message);
                 $overlay.addClass('hidden');
-            }, 1000);
+            }
         });
+
 
         // --- JSON Export ---
         $('#export-json-btn').click(function() {

@@ -19,21 +19,34 @@ Compared to the original demonstration, this **Inference Studio** includes sever
 
 ## 🛠️ Getting Started
 
-### 1. Launch the Studio
-Run the automated startup script to initialize your environment:
+### 1. Requirements
+*   **Node.js**: For the Web Dashboard.
+*   **Python 3.8+**: For the High-Fidelity Georeferencing Engine.
+*   **Dependencies**:
+    ```bash
+    pip install flask flask-cors opencv-python pandas numpy
+    ```
+
+### 2. Launch the Studio
+Run the automated startup script to initialize both the Web Dashboard and the Python Bridge:
 ```bash
 ./start.sh
 ```
 
-### 2. Analyze Your Mission
-1.  **Drop Files**: Drag and drop your DJI video file and its corresponding CSV flight log (exported from Airdata).
-2.  **Filter**: Use the **Confidence Slider** to hide low-confidence detections and focus on confirmed targets.
-3.  **Navigate**: Click any detection in the dashboard to fly the map directly to that object for closer inspection.
-4.  **Export**: Save your mission data as a JSON file for use in GIS or reporting software.
+### 3. Analyze Your Mission
+1.  **Drop Files**: Drag and drop your DJI video file and its corresponding CSV flight log.
+2.  **Generate Orthomosaic**: Click the purple button to trigger the **Python Georeferencing Bridge**. This will process the video at high-resolution with OpenCV-powered perspective warping.
+3.  **Filter**: Use the **Confidence Slider** to hide low-confidence detections and focus on confirmed targets.
+4.  **Export**: Save your mission data as a JSON file or download the finalized orthomosaic map.
 
 ---
 
-## Technical Resources
+## Technical Architecture: The Python Bridge 🌉
+
+To overcome browser limitations with large 4K video files and complex linear algebra, this studio uses a **Hybrid Architecture**:
+
+*   **Frontend (JS/Mapbox)**: Handles the real-time interactive mapping, detection lists, and UI controls.
+*   **Backend (Python/OpenCV)**: A local Flask bridge that performs heavy-duty georeferencing. It projects every frame into a Cartesian meter-space (UTM-like) and uses OpenCV's `warpPerspective` to create gap-free, high-fidelity orthomosaics.
 
 ## Run It Locally
 

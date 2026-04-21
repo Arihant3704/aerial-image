@@ -1,5 +1,10 @@
 data/DJI_*
 data/*.csv
+DJI_*.MP4
+*.MP4
+*.csv
+__pycache__/
+temp_mosaic/
 .DS_STORE
 
 # Logs

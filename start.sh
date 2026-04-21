@@ -31,22 +31,24 @@ fi
 # 3. Start the local server and the watcher in parallel
 echo -e "${GREEN}Build successful! Launching local server and development watcher...${NC}"
 
-# Function to cleanup background processes on exit
-cleanup() {
-    echo -e "\n${BLUE}Stopping project...${NC}"
-    kill $WATCHER_PID $SERVER_PID
-    exit
-}
-
-trap cleanup SIGINT SIGTERM
-
 # Start the Webpack watcher for development
 npm run build:dev &
 WATCHER_PID=$!
 
+# Start the Python Georeferencing Bridge
+python3 app.py &
+BRIDGE_PID=$!
+
 # Start the local server on port 3000
 npx serve dist &
 SERVER_PID=$!
+
+# Function to cleanup background processes on exit
+cleanup() {
+    echo -e "\n${BLUE}Stopping project...${NC}"
+    kill $WATCHER_PID $SERVER_PID $BRIDGE_PID
+    exit
+}
 
 echo -e "${GREEN}===============================================${NC}"
 echo -e "${GREEN}  Project is running at: http://localhost:3000 ${NC}"
