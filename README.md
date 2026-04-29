@@ -3,6 +3,10 @@
 
 ![Aerial Inference Studio Demo](demo.gif)
 
+<img width="3886" height="4096" alt="orthomosaic_1777464459806" src="https://github.com/user-attachments/assets/6949eebb-9a28-4e92-a2ea-30f5a69e7ef0" />
+
+
+[Mission_Report_1777464699843.pdf](https://github.com/user-attachments/files/27201369/Mission_Report_1777464699843.pdf)
 
 Transform standard DJI drone videos and flight logs into a professional-grade intelligence dashboard. This studio automatically extracts the exact GPS coordinates of objects detected by AI and plots them on a real-time interactive map.
 
