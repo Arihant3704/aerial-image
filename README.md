@@ -1,7 +1,7 @@
 # Aerial Inference Studio 🛸
 ### Real-time Drone Georeferencing & Object Detection
 
-<img width="1846" height="934" alt="image" src="https://github.com/user-attachments/assets/4fac419f-3bf9-43dd-afbb-8364514106db" />
+![Aerial Inference Studio Demo](demo.gif)
 
 
 Transform standard DJI drone videos and flight logs into a professional-grade intelligence dashboard. This studio automatically extracts the exact GPS coordinates of objects detected by AI and plots them on a real-time interactive map.
