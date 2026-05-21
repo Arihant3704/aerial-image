@@ -1,0 +1,130 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{fontawesome5}
+\usepackage[margin=0.45in, top=0.45in, bottom=0.45in]{geometry}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{xcolor}
+
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+
+\titlespacing*{\section}{0pt}{4pt}{2pt}
+\titleformat{\section}{\normalsize\bfseries\scshape}{}{}{}[\titlerule]
+\setlist{nosep, leftmargin=11pt, label={\textbullet}, itemsep=1.5pt, topsep=1.5pt}
+
+\definecolor{secondary}{RGB}{41, 128, 185}   % Sleek blue
+\definecolor{linkblue}{RGB}{41, 128, 185}    % Matching link blue
+\hypersetup{colorlinks=true, urlcolor=linkblue, linkcolor=linkblue}
+
+\begin{document}
+
+%================ HEADER =================
+\begin{center}
+    {\LARGE \textbf{\scshape Arihant M Appannavar}} \\[3pt]
+    \small
+    \color{black}
+    \faPhone\ +91 7349750571 \quad
+    \faEnvelope\ \href{mailto:arihantappannavar@gmail.com}{arihantappannavar@gmail.com} \quad
+    \faLinkedin\ \href{https://www.linkedin.com/in/arihant-appannavar-6635063a0/}{LinkedIn} \quad
+    \faGithub\ \href{https://github.com/Arihant3704}{GitHub} \quad
+    \faGlobe\ \href{https://arihant3704.github.io}{Portfolio}
+\end{center}
+
+\vspace{2pt}
+
+%================ SUMMARY =================
+\section*{\color{linkblue}Professional Summary}
+\small
+\vspace{2pt}
+AI Engineer specializing in \textbf{Large Language Models (LLMs)}, \textbf{Vision-Language Models (VLMs)}, \textbf{Autonomous Multi-Agent Systems}, and \textbf{Edge AI Optimization}. Experienced in designing custom agent orchestration pipelines, indexing semantic video telemetry for RAG retrieval, and developing high-throughput computer vision solutions. Proven track record in hardware-accelerated deep learning deployments and autonomous robotics perception (ROS2/Gazebo).
+\vspace{3pt}
+
+%================ EDUCATION =================
+\section*{\color{linkblue}Education}
+\small
+\vspace{2pt}
+\textbf{B.E. Electronics and Communication Engineering} \hfill KLE Technological University, 2022--26 \\
+\textbf{PUC (Pre-University College)} \hfill RB Patil Mahesh PUC College, 2020--22
+\vspace{3pt}
+
+%================ EXPERIENCE =================
+\section*{\color{linkblue}Experience}
+\small
+\vspace{2pt}
+\textbf{\color{secondary}AI \& Computer Vision Intern -- DocketRun} \hfill 2026
+\begin{itemize}
+    \item Developed \textbf{real-time computer vision \& AI pipelines} for industrial automation, engineering YOLO-based ANPR and visual monitoring systems.
+    \item Designed \textbf{VLM event-logging engines} that process surveillance streams, generate dense frame-by-frame semantic descriptions, and index them into vector stores (ChromaDB) for natural language semantic query and retrieval.
+    \item Built \textbf{collaborative multi-agent systems} using Prompt Engineering and structured tool-calling, automating safety audits and checking flight itineraries against external API constraints.
+\end{itemize}
+
+\vspace{4pt}
+\textbf{\color{secondary}Avionics Engineer -- AeroKLE Aero-Design Team} \hfill 2024--25
+\begin{itemize}
+    \item Engineered \textbf{autonomous drone navigation} modules using \textbf{ROS2, Gazebo, and MAVLink} for surveillance and search-and-rescue.
+    \item Implemented vision-assisted flight controllers and waypoint planners; achieved \textbf{AIR 3 in AeroTHON 2024} and \textbf{AIR 2 in ADDC 2024}.
+\end{itemize}
+\vspace{3pt}
+
+%================ PROJECTS =================
+\section*{\color{linkblue}Technical Projects}
+\small
+\vspace{2pt}
+
+\textbf{\color{secondary}Agentic Flight Planner \& Multi-Agent Coordinator} $|$ \textit{Python, LLMs, AI Agents, Prompt Engineering} \hfill \href{https://github.com/Arihant3704/aerial-image/tree/main/ai_projects/agentic_flight_planner}{\color{linkblue}\faGithub}
+\begin{itemize}
+    \item Built a multi-agent system (Planner, Weather Analyst, and Safety Officer) collaborating to validate autonomous flight plans.
+    \item Implemented structured prompt systems guiding agent reasoning and integrated external weather/airspace restriction checking tools.
+\end{itemize}
+
+\vspace{4pt}
+\textbf{\color{secondary}VLM-powered Temporal Video Search Engine} $|$ \textit{Python, ChromaDB, VLMs (Qwen-VL), RAG, Embeddings} \hfill \href{https://github.com/Arihant3704/aerial-image/tree/main/ai_projects/vlm_event_logger}{\color{linkblue}\faGithub}
+\begin{itemize}
+    \item Developed a video ingestion pipeline using Vision-Language Models to extract rich semantic summaries of video frames.
+    \item Indexed metadata in ChromaDB using sentence-transformers, enabling users to search surveillance logs using natural language.
+\end{itemize}
+
+\vspace{4pt}
+\textbf{\color{secondary}Edge AI Model Optimization \& Quantization Engine} $|$ \textit{ONNX, PyTorch, Vitis AI, Quantization} \hfill \href{https://github.com/Arihant3704/aerial-image/tree/main/ai_projects/edge_quantizer}{\color{linkblue}\faGithub}
+\begin{itemize}
+    \item Exported deep learning models to ONNX and applied \textbf{INT8 quantization}, reducing model size by 4x and latency by 75\%.
+    \item Profiled latency, memory footprints, and frame rates comparing FP32 and INT8 configurations on resource-constrained edge hardware.
+\end{itemize}
+
+\vspace{4pt}
+\textbf{\color{secondary}Aerial Georeferencing \& Analysis Studio} $|$ \textit{Flask, React, OpenCV, GPS Telemetry, PDF Reporting} \hfill \href{https://github.com/Arihant3704/aerial-image}{\color{linkblue}\faGithub}
+\begin{itemize}
+    \item Developed a web-based mapping cockpit to overlay real-time object detection telemetry onto geo-referenced map projections.
+    \item Designed an orthomosaic stitching engine (alpha-blending) and automated a PDF reporting pipeline generating tagged target inventories.
+\end{itemize}
+\vspace{3pt}
+
+%================ SKILLS =================
+\section*{\color{linkblue}Technical Skills}
+\small
+\vspace{2pt}
+\begin{itemize}[leftmargin=0pt, label={}, itemsep=1.5pt]
+    \item \textbf{\color{secondary}Languages:} Python, C++, SQL, Bash, LaTeX
+    \item \textbf{\color{secondary}AI \& LLMs:} Large Language Models (LLMs), Vision-Language Models (VLMs), AI Agents (OpenClaw), Retrieval-Augmented Generation (RAG), Prompt Engineering, Function Calling, Vector Databases (ChromaDB)
+    \item \textbf{\color{secondary}CV \& ML:} OpenCV, PyTorch, YOLOv8--v11, Convolutional Neural Networks (CNNs), Model Quantization, Transfer Learning
+    \item \textbf{\color{secondary}Edge AI \& HW:} ONNX, TensorRT, Vitis AI, Raspberry Pi, NVIDIA Jetson Nano, Xilinx ZCU104 FPGA
+    \item \textbf{\color{secondary}Robotics:} ROS2, Gazebo, MAVLink, Sensor Fusion, UAV Path Planning, Autonomous Waypoint Navigation
+    \item \textbf{\color{secondary}Tools \& Dev:} Git, Linux, Docker, Flask, React, Tailwind CSS, CI/CD Pipelines
+\end{itemize}
+\vspace{3pt}
+
+%================ RESEARCH =================
+\section*{\color{linkblue}Research \& Publications}
+\small
+\vspace{2pt}
+\begin{itemize}
+    \item \textbf{\color{secondary}Automated Student Activity Recognition using YOLOv11} -- IEEE Conference, 2025 \hfill \href{https://ieeexplore.ieee.org/document/11166944}{\color{linkblue}[Link]}
+    \item \textbf{\color{secondary}Hardware-Accelerated Object Detection with YOLOv5-Nano on FPGA} -- IEEE, 2025 \hfill \href{https://ieeexplore.ieee.org/document/11300603}{\color{linkblue}[Link]}
+\end{itemize}
+
+\end{document}
